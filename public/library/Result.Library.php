@@ -3,6 +3,9 @@
 /** 结果集调用入口 **/
 class Result 
 {
+    const Error = -1;
+    const Success = 1;
+
     public static function __callStatic($method, $params)
     {
         $return_data = new ReturnData();

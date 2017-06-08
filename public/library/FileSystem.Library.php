@@ -5,6 +5,31 @@ class FileSystem
     private $path;
     public function __construct($path){
         $this->path = realpath($path);
+        return $this;
+    }
+
+    /**
+     * 输出路径下所有文件列表
+     * @param   $recurseive_dir  string  循环目录地址
+     */
+    public static function readRecursiveDir( $recurseive_dir )
+    {
+        $result_dir = array();
+        if( $dir_handle = opendir($recurseive_dir) ) {
+            while( false !== ($entity = readdir($dir_handle)) ) {
+                if( $entity==='.' || $entity==='..' ) continue;
+                $entity =  "{$recurseive_dir}/{$entity}";
+
+                if( is_dir($entity) ) {
+                    readRecursiveDir( $entity );
+                    continue;
+                }
+                array_push( $result_dir, $entity );
+#               echo "{$entity}\n";
+            }
+            closedir($dir_handle);
+        }
+        return $result_dir;
     }
 
     public function getPath() {
@@ -43,9 +68,6 @@ class FileSystem
         return $this->isFile($file_name); 
     }
 
-    public function hasDir($dir_name=''){
-        return $this->isDir($dir_name); 
-    }
 
     protected function localPath($path) {
         return $path = ($path=='')?$this->path:($this->path.'/'.$path);
@@ -99,38 +121,98 @@ class FileSystem
         return false;
     }
 
-    public function dirList($dir_name='') {
-        if($this->isDir($dir_name)) {
+    /**
+     * @type result
+     *
+     */
+    public function dirList() {
+        if($this->isDir()) {
             $list = array();
-            $dir_name = $this->localPath($dir_name);
-            $handle = opendir($dir_name);
-            while (false !== ($file = readdir($handle)) ) {
-                if($file == '.' || $file == '..') continue;
-                $list[] = $file;
-            }
-            closedir($handle);
-            sort($list);
-            return $list;
-        }
-        return false;
-    }
-
-    public function dirDetail($dir_name='', $config = ['size','type']) {
-        if($this->isDir($dir_name)) {
-            $list = array();
-            $dir_name = $this->localPath($dir_name);
             $handle = opendir($this->path);
             while (false !== ($file = readdir($handle)) ) {
                 if($file == '.' || $file == '..') continue;
-                $type = is_file($file)?'file':(is_dir($file)?'dir':'other');
-                $size = filesize($file);
-                $list[] = ['file_name'=>$file, 'type'=>$type, 'size'=>$size];
+                $list[] = $this->localPath( $file );
             }
             closedir($handle);
             sort($list);
-            return $list;
+            $result = Result::setData($list)->setCode(Result::Success);
+        } else {
+            $result = Result::setMsg('目录异常')->setCode(Result::Error);
         }
-        return false;
+        return $result;
+    }
+
+    /**
+     * @type result
+     *
+     */
+    public function dirDetail( $attrs = ['size','type', 'ext'] ) 
+    {
+        if($this->isDir()) {
+            $list = array();
+            $handle = opendir($this->path);
+            while (false !== ($file = readdir($handle)) ) {
+                if($file == '.' || $file == '..') continue;
+                $full_name = $this->localPath( $file );
+                $file_info = self::fileInfo( $full_name, $attrs );
+                $list[] = array_merge(['full_name'=>$full_name, 'file_name'=>$file], $file_info);
+            }
+            closedir($handle);
+            sort($list);
+            $result = Result::setData($list)->setCode(Result::Success);
+        } else {
+            $result = Result::setMsg('目录异常')->setCode(Result::Error);
+        }
+        return $result;
+    }
+
+    /**
+     * @type tool
+     */
+    public static function fileInfo( $file_name, $attrs=['type', 'size', 'ext'] )
+    {
+        $result = array();
+        $type = is_file($file_name)?'file':(is_dir($file_name)?'dir':'other');
+        in_array( 'type', $attrs ) && ($result['type'] = $type);
+        if( $type==='file' ) {
+            in_array( 'size', $attrs ) && ($result['size'] = self::fileSize( $file_name ));
+            in_array( 'ext', $attrs ) && ($result['ext'] = self::fileExtension( $file_name ));
+        }
+        return $result;
+    }
+
+    /**
+     * @type tool
+     */
+    private static function fileSize( $file_name )
+    {
+        return self::convertUnit(filesize($file_name));
+    }
+
+    /**
+     * @type tool
+     */
+    private static function fileExtension( $file_name )
+    {
+        return mime_content_type($file_name);
+    }
+
+    /**
+     * @type tool
+     */
+    public static function convertUnit( int $byte_number )
+    {
+        $unit = ['B', 'K', 'M', 'G', 'T'];
+        $cyle = 0;
+        while( $byte_number > 1024 ){
+            $byte_number /= 1024;
+            $cyle++;
+        }
+
+        if( $cyle > 4 ) return false;
+
+        $byte_number = ceil($byte_number*100)/100;
+        return "{$byte_number}{$unit[$cyle]}";
     }
 
 
