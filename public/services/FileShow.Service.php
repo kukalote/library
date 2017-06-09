@@ -7,41 +7,58 @@
 
 class FileShow
 {
-    private $dir_obj;
-    public function __construct( $dir )
+    private $_fd_system;
+    public function __construct( $path )
     {
-        $this->setPath( $dir );
-//        return $file_system;
-//        if( !is_dir($log_dir) ) {
-//            return Result::setMsg('目录异常')
-//                ->setCode(Result::Error)
-//                ->toJson();
-//        }
-
+        $this->initPath( $path );
     }
 
-    private function setPath( $dir )
+    private function initPath( $path )
     {
-        $this->dir_obj = new FileSystem( $dir );
+        $this->_fd_system = new FileSystem( $path );
+        var_dump($this->_fd_system);exit;
     }
 
     //获取目录下文件列表
     public  function getDirList()
     {
-        return $this->dir_obj->dirList();
+        return $this->_fd_system->dirList();
     }
     //获取目录列表属性 
     public  function getDirAttrs()
     {
-        return $this->dir_obj->dirDetail();   
+        return $this->_fd_system->dirDetail();   
     }
 
     public function showDir( ) 
     {
-        return $this->getDirAttrs();
-        //抓取目录数据
+        $result = new Result();
+        $list = $this->getDirAttrs();
+        if( $list ) {
+            $result->setData( $list )->setCode( Result::Success );
+        } else {
+            $result->setMsg( '目录为空' )->setCode( Result::Success );
+        }
+        return $result;
+    }
 
-        //分析并输出
+    public function isEnable() 
+    {
+        return (bool) $this->_fd_system->getPath();
+    }
+
+    public function readFile()
+    {
+        $class = $this->_fd_system->getClass();
+
+        var_dump($this->_fd_system);exit;
+//        $file_option = new FileOption($this->_fd_system->);
+//        if( $class == FileSystem::PLAIN ) {
+//            $content = $file_option->readPlain();
+//        } else if( $class == FileSystem::OTHER ) {
+//            $content = $this->_fd_system->readOther();
+//        }
+        return $content;
     }
 
 }
